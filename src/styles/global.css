@@ -339,3 +339,17 @@ html[data-push='right']::view-transition-new(content) { animation-name: push-in-
   .case__grid { grid-template-columns: minmax(0, 1fr); }
   .gallery { position: static; --avail: 70svh; }
 }
+
+/* Narrow phones: every link in the top bar fits without sideways scrolling */
+@media (max-width: 400px) {
+  .bar { gap: 0.25rem; padding-inline: 0.75rem; }
+  .bar__mark { width: 1.5rem; height: 1.5rem; }
+  .bar__nav { margin-right: 0; font-size: 0.85rem; gap: 0; }
+  .bar__nav a { padding: 0 0.45rem; }
+  .bar__nav a::after { left: 0.45rem; right: 0.45rem; }
+}
+@media (max-width: 340px) {
+  .bar__nav { font-size: 0.8rem; }
+  .bar__nav a { padding: 0 0.35rem; }
+  .bar__nav a::after { left: 0.35rem; right: 0.35rem; }
+}
