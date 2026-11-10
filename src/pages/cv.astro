@@ -1,0 +1,170 @@
+---
+import Base from '../layouts/Base.astro';
+import { cvFile } from '../data/about';
+
+const icon = {
+  prev: 'M15 4l-8 8 8 8',
+  next: 'M9 4l8 8-8 8',
+  minus: 'M5 12h14',
+  plus: 'M12 5v14M5 12h14',
+  fit: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  full: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  down: 'M12 4v11M7 11l5 5 5-5M5 20h14',
+};
+---
+<Base title="CV" description="The CV of Fionn Mowlds.">
+  <div class="page cv">
+    <div class="viewer" data-viewer data-src={cvFile}>
+      <div class="viewer__bar" role="toolbar" aria-label="CV viewer controls">
+        <div class="viewer__group">
+          <button type="button" data-prev aria-label="Previous page"><svg viewBox="0 0 24 24"><path d={icon.prev} /></svg></button>
+          <span class="viewer__page" aria-live="polite">Page <b data-page>1</b> of <span data-pages>–</span></span>
+          <button type="button" data-next aria-label="Next page"><svg viewBox="0 0 24 24"><path d={icon.next} /></svg></button>
+        </div>
+        <div class="viewer__group">
+          <button type="button" data-zoom-out aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d={icon.minus} /></svg></button>
+          <button type="button" data-fit class="viewer__zoom" aria-label="Fit to width"><span data-zoom>Fit</span></button>
+          <button type="button" data-zoom-in aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d={icon.plus} /></svg></button>
+        </div>
+        <div class="viewer__group">
+          <a class="viewer__btn" href={cvFile} download="Fionn_Mowlds_CV.pdf"><svg viewBox="0 0 24 24"><path d={icon.down} /></svg><span>Download</span></a>
+          <button type="button" data-full class="viewer__btn" aria-label="Full screen" title="Full screen (F)"><svg viewBox="0 0 24 24"><path d={icon.full} /></svg><span data-full-label>Full screen</span></button>
+        </div>
+      </div>
+      <div class="viewer__scroll" data-scroll tabindex="0" aria-label="CV pages">
+        <div class="viewer__pages" data-pages-el></div>
+        <p class="viewer__status" data-status>Loading CV…</p>
+      </div>
+      <noscript><p class="viewer__status">The viewer needs JavaScript. <a href={cvFile} download>Download the CV</a>.</p></noscript>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import * as pdfjs from 'pdfjs-dist';
+  import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+
+  document.addEventListener('astro:page-load', async () => {
+    const root = document.querySelector<HTMLElement>('[data-viewer]');
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = 'true';
+    const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
+    const scroll = $('[data-scroll]'), host = $('[data-pages-el]'), status = $('[data-status]');
+    const pageEl = $('[data-page]'), pagesEl = $('[data-pages]'), zoomEl = $('[data-zoom]');
+    const fullBtn = $('[data-full]'), fullLabel = $('[data-full-label]');
+
+    let doc: Awaited<ReturnType<typeof pdfjs.getDocument>['promise']>;
+    try {
+      doc = await pdfjs.getDocument({ url: root.dataset.src! }).promise;
+    } catch {
+      document.dispatchEvent(new Event('viewer-ready'));
+      status.innerHTML = `Couldn't load the viewer. <a href="${root.dataset.src}" download>Download the CV</a> instead.`;
+      return;
+    }
+    status.remove();
+    pagesEl.textContent = String(doc.numPages);
+
+    const pages = await Promise.all(Array.from({ length: doc.numPages }, (_, i) => doc.getPage(i + 1)));
+    const wrappers: HTMLElement[] = [];
+    let zoom = 0; // 0 = fit width
+    let token = 0;
+
+    const render = async () => {
+      const run = ++token;
+      const avail = scroll.clientWidth - 24;
+      const base = pages[0].getViewport({ scale: 1 }).width;
+      const scale = zoom === 0 ? Math.min(avail / base, 2.2) : zoom;
+      zoomEl.textContent = zoom === 0 ? 'Fit' : `${Math.round(scale * 100)}%`;
+      const dpr = window.devicePixelRatio || 1;
+      for (let i = 0; i < pages.length; i++) {
+        const vp = pages[i].getViewport({ scale });
+        let w = wrappers[i];
+        if (!w) {
+          w = document.createElement('div');
+          w.className = 'viewer__sheet';
+          w.appendChild(document.createElement('canvas'));
+          host.appendChild(w);
+          wrappers[i] = w;
+        }
+        w.style.width = `${vp.width}px`;
+        w.style.height = `${vp.height}px`;
+        const canvas = w.firstChild as HTMLCanvasElement;
+        const next = document.createElement('canvas');
+        next.width = Math.floor(vp.width * dpr);
+        next.height = Math.floor(vp.height * dpr);
+        next.style.cssText = `width:${vp.width}px;height:${vp.height}px`;
+        await pages[i].render({ canvas: next, viewport: pages[i].getViewport({ scale: scale * dpr }) }).promise;
+        if (run !== token) return;
+        canvas.replaceWith(next);
+      }
+    };
+
+    const current = () => {
+      const mid = scroll.scrollTop + scroll.clientHeight / 3;
+      let idx = 0;
+      wrappers.forEach((w, i) => { if (w.offsetTop - 12 <= mid) idx = i; });
+      return idx;
+    };
+    const go = (i: number) => {
+      const t = Math.max(0, Math.min(wrappers.length - 1, i));
+      scroll.scrollTo({ top: wrappers[t].offsetTop - 12, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    };
+    scroll.addEventListener('scroll', () => { pageEl.textContent = String(current() + 1); }, { passive: true });
+
+    const setZoom = (z: number) => { zoom = Math.min(3, Math.max(0.5, z)); render(); };
+    const scaleNow = () => (zoom === 0 ? parseFloat(zoomEl.textContent!) / 100 || 1 : zoom);
+    $('[data-prev]').addEventListener('click', () => go(current() - 1));
+    $('[data-next]').addEventListener('click', () => go(current() + 1));
+    $('[data-zoom-in]').addEventListener('click', () => setZoom(scaleNow() + 0.25));
+    $('[data-zoom-out]').addEventListener('click', () => setZoom(scaleNow() - 0.25));
+    $('[data-fit]').addEventListener('click', () => { zoom = 0; render(); });
+
+    // Real full screen where supported, a fixed overlay where not (iPhone Safari)
+    const isFull = () => document.fullscreenElement === root || root.classList.contains('is-expanded');
+    const sync = () => {
+      const on = isFull();
+      fullLabel.textContent = on ? 'Exit full screen' : 'Full screen';
+      fullBtn.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+      document.documentElement.classList.toggle('viewer-open', root.classList.contains('is-expanded'));
+      zoom === 0 && render();
+    };
+    const toggleFull = async () => {
+      if (isFull()) {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        root.classList.remove('is-expanded');
+      } else if (root.requestFullscreen) {
+        try { await root.requestFullscreen(); } catch { root.classList.add('is-expanded'); }
+      } else {
+        root.classList.add('is-expanded');
+      }
+      sync();
+    };
+    fullBtn.addEventListener('click', toggleFull);
+    document.addEventListener('fullscreenchange', sync);
+    scroll.addEventListener('dblclick', toggleFull);
+
+    const onKey = (e: KeyboardEvent) => {
+      if (!document.body.contains(root) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFull(); }
+      else if (e.key === '+' || e.key === '=') setZoom(scaleNow() + 0.25);
+      else if (e.key === '-') setZoom(scaleNow() - 0.25);
+      else if (e.key === '0') { zoom = 0; render(); }
+      else if (e.key === 'Escape' && root.classList.contains('is-expanded')) toggleFull();
+      else if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(current() + 1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(current() - 1); }
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('astro:before-swap', () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('fullscreenchange', sync);
+      document.documentElement.classList.remove('viewer-open');
+    }, { once: true });
+
+    let t: number;
+    new ResizeObserver(() => { if (zoom === 0) { clearTimeout(t); t = window.setTimeout(render, 120); } }).observe(scroll);
+    await render();
+    pageEl.textContent = '1';
+    document.dispatchEvent(new Event('viewer-ready'));
+  });
+</script>

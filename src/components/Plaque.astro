@@ -1,0 +1,12 @@
+---
+import { isFilled } from '../data/about';
+interface Props { label: string; href: string }
+const { label, href } = Astro.props;
+const external = href.startsWith('http');
+const isPdf = href.endsWith('.pdf');
+---
+{isFilled(href) ? (
+  <a class="link" href={href} {...(external ? { rel: 'noopener' } : {})} {...(isPdf ? { target: '_blank', 'data-astro-reload': true } : {})}>{label}</a>
+) : (
+  <span class="link link--empty" title={`${label} link not added yet`}>{label}</span>
+)}

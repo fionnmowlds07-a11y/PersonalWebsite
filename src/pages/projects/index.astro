@@ -1,0 +1,26 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Fill from '../../components/Fill.astro';
+
+const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+---
+<Base title="Projects" description="Projects built by Fionn Mowlds.">
+  <div class="page">
+    <h1>Projects</h1>
+    <ul class="rows">
+      {projects.map((project, i) => (
+        <li class="reveal" style={`--n:${i}`}>
+          <a class="row" href={`/projects/${project.id}`}>
+            <h2>{project.data.title}</h2>
+            <div class="row__text">
+              <p><Fill text={project.data.summary} /></p>
+              <p class="row__tech"><Fill text={project.data.tech} /></p>
+            </div>
+            <svg class="row__arrow" viewBox="0 0 48 24" aria-hidden="true"><path d="M2 12h42M33 3l11 9-11 9" /></svg>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</Base>

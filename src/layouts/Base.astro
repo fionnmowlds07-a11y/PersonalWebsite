@@ -1,0 +1,198 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import '@fontsource/source-serif-4/400.css';
+import '@fontsource/source-serif-4/600.css';
+import '@fontsource/figtree/400.css';
+import '@fontsource/figtree/600.css';
+import '../styles/global.css';
+import { getCollection } from 'astro:content';
+import { about, isFilled } from '../data/about';
+
+interface Props { title?: string; description?: string; home?: boolean }
+const { title, description = about.description, home = false } = Astro.props;
+const pageTitle = title ? `${title} | ${about.name}` : `${about.name} | Software engineer`;
+const order = Object.fromEntries((await getCollection('projects')).map((project) => [project.id, project.data.order]));
+const onProjects = Astro.url.pathname.startsWith('/projects');
+
+---
+<!doctype html>
+<html lang="en-IE">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="theme-color" content="#12294a" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script is:inline>document.documentElement.classList.add('first-load', 'js');</script>
+    <ClientRouter />
+  </head>
+  <body data-projects={JSON.stringify(order)}>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="curtain" aria-hidden="true" transition:persist="curtain"><svg viewBox="0 0 32 32"><path d="M3 19 29 8v15L3 21z" fill="#fff"/><path d="M18 12v11h5V10z" fill="#a9cbe3"/></svg></div>
+    <header class="bar">
+      <a class="bar__name" href="/" aria-label={`${about.name}, home`}>
+        <svg class="bar__mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M3 19 29 8v15L3 21z" fill="#fff"/><path d="M18 12v11h5V10z" fill="#a9cbe3"/></svg>
+        <span>{about.name}</span>
+      </a>
+      <nav class="bar__nav" aria-label="Main" data-astro-prefetch="viewport">
+        <a href="/#about" data-spy="about">About</a>
+        <a href="/#experience" data-spy="experience">Experience</a>
+        <a href="/#skills" data-spy="skills">Skills</a>
+        <a href="/projects" aria-current={onProjects ? 'page' : undefined}>Projects</a>
+        <a href="/cv" aria-current={Astro.url.pathname.startsWith('/cv') ? 'page' : undefined}>CV</a>
+      </nav>
+    </header>
+    <main id="main" transition:name="content"><slot /></main>
+    {(
+      <footer class="foot" >
+        <span>{about.name}</span>
+        <ul>
+          {about.links.filter((link) => isFilled(link.href)).map((link) => (
+            <li><a href={link.href}>{link.label}</a></li>
+          ))}
+        </ul>
+      </footer>
+    )}
+    <script>
+      // Page curtain: a navy panel drops over the page, the swap happens underneath, then it carries on down to reveal the new page.
+      import { gsap } from 'gsap';
+      const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const curtain = () => document.querySelector<HTMLElement>('.curtain')!;
+      let tl: gsap.core.Timeline | undefined;
+      let covered = false;
+
+      // Project pages push each other sideways instead of using the curtain
+      const orders = (): Record<string, number> => { try { return JSON.parse(document.body.dataset.projects ?? '{}'); } catch { return {}; } };
+      const rank = (url: URL): number | undefined => {
+        if (url.pathname.replace(/\/$/, '') === '/projects') return 0;
+        const m = url.pathname.match(/^\/projects\/([^/]+)\/?$/);
+        return m ? orders()[m[1]] : undefined;
+      };
+      let lastLink: { push?: string; at: number } = { at: 0 };
+      document.addEventListener('click', (e) => {
+        const a = (e.target as Element).closest?.('a[data-push]') as HTMLElement | null;
+        lastLink = { push: a?.dataset.push, at: Date.now() };
+      }, true);
+      let pushTimer: number | undefined;
+      let pending: string | undefined;
+      // The router copies the new page's <html> attributes over, so the direction is set once the swap has happened
+      document.addEventListener('astro:before-swap', (e: any) => {
+        // The curtain covers curtain-style changes, so skip the browser's page snapshot animation there: it is the costly part
+        if (!pending && !document.documentElement.dataset.push) { const vt = e.viewTransition; if (vt) { vt.ready?.catch(() => {}); vt.finished?.catch(() => {}); vt.skipTransition?.(); } }
+      });
+      document.addEventListener('astro:after-swap', () => {
+        if (!pending) return;
+        document.documentElement.dataset.push = pending;
+        pending = undefined;
+        pushTimer = window.setTimeout(() => document.documentElement.removeAttribute('data-push'), 1200);
+      });
+
+      document.addEventListener('astro:before-preparation', (e) => {
+        window.clearTimeout(pushTimer);
+        pending = undefined;
+        if (reduced()) return;
+        const from = rank(new URL(location.href)), to = rank(e.to);
+        if (from !== undefined && to !== undefined && from !== to) {
+          const hinted = Date.now() - lastLink.at < 1500 ? lastLink.push : undefined;
+          pending = hinted ?? (to > from ? 'left' : 'right');
+          return;
+        }
+        const original = e.loader;
+        e.loader = async () => {
+          // Cover and fetch at the same time, so a prefetched page costs nothing extra
+          const drop = new Promise<void>((resolve) => {
+            tl?.kill();
+            const el = curtain();
+            const mark = el.querySelector('svg');
+            tl = gsap.timeline({ onComplete: () => { covered = true; resolve(); } });
+            tl.set(el, { yPercent: -100, visibility: 'visible' })
+              .set(mark, { opacity: 0, scale: 0.85 })
+              .to(el, { yPercent: 0, duration: 0.32, ease: 'power2.inOut' })
+              .to(mark, { opacity: 1, scale: 1, duration: 0.2, ease: 'power2.out' }, 0.12);
+          });
+          await Promise.all([drop, original()]);
+        };
+      });
+
+      document.addEventListener('astro:page-load', async () => {
+        if (!covered) return;
+        covered = false;
+        // Wait for a heavy page (the CV viewer) to finish drawing, but never for long
+        if (document.querySelector('[data-viewer]')) {
+          await Promise.race([
+            new Promise((r) => document.addEventListener('viewer-ready', r, { once: true })),
+            new Promise((r) => setTimeout(r, 2500)),
+          ]);
+        }
+        // Let the new page lay out and paint once under the curtain, so nothing janks while it lifts
+        await document.fonts?.ready;
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const el = curtain();
+        tl?.kill();
+        tl = gsap.timeline({ onComplete: () => { gsap.set(el, { visibility: 'hidden', yPercent: -100 }); } });
+        tl.to(el.querySelector('svg'), { opacity: 0, duration: 0.12, ease: 'power1.in' })
+          .to(el, { yPercent: 100, duration: 0.38, ease: 'power2.inOut' }, 0)
+          .from(gsap.utils.toArray('.hull__inner, .sections > section:first-child, .page > *'), { y: 16, opacity: 0, duration: 0.4, ease: 'power2.out', stagger: 0.05, clearProps: 'opacity,transform' }, 0.1);
+      });
+    </script>
+    <script>
+      // Left and right arrow keys step through projects
+      document.addEventListener('keydown', (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+        if (!location.pathname.startsWith('/projects/')) return;
+        const t = e.target as HTMLElement;
+        if (t.closest?.('input, textarea, select, [contenteditable]')) return;
+        const link = document.querySelector<HTMLElement>(e.key === 'ArrowRight' ? '[data-proj-next]' : e.key === 'ArrowLeft' ? '[data-proj-prev]' : '');
+        if (link) { e.preventDefault(); link.click(); }
+      });
+    </script>
+    <script>
+      // Smooth scrolling for same-page links only (a global smooth scroll made page changes lag)
+      document.addEventListener('click', (e) => {
+        const a = (e.target as Element).closest?.('a[href*="#"]') as HTMLAnchorElement | null;
+        if (!a || a.origin !== location.origin || a.pathname !== location.pathname || !a.hash || e.defaultPrevented) return;
+        const target = document.getElementById(decodeURIComponent(a.hash.slice(1)));
+        if (!target) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+        history.replaceState(history.state, '', a.hash);
+      }, true);
+    </script>
+    <script>
+      // Highlights the nav item for the home section in view. Runs after every router page change.
+      document.addEventListener('astro:page-load', () => {
+        // Reveal on scroll
+        const reveal = new IntersectionObserver((entries) => entries.forEach((e) => {
+          if (e.isIntersecting) { e.target.classList.add('is-in'); reveal.unobserve(e.target); }
+        }), { rootMargin: '0px 0px -8% 0px' });
+        document.querySelectorAll('.reveal').forEach((el) => {
+          // Already on screen when the page appears: show at once, the page transition does the animating
+          if (el.getBoundingClientRect().top < window.innerHeight * 0.92) { el.classList.add('instant', 'is-in'); }
+          else reveal.observe(el);
+        });
+        document.addEventListener('astro:before-swap', () => reveal.disconnect(), { once: true });
+
+        const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-spy]')];
+        links.forEach((link) => link.removeAttribute('aria-current'));
+        const sections = links.map((link) => document.getElementById(link.dataset.spy!)).filter((el): el is HTMLElement => !!el);
+        if (sections.length === 0) return;
+        const mark = (id: string) => links.forEach((link) => (link.dataset.spy === id ? link.setAttribute('aria-current', 'location') : link.removeAttribute('aria-current')));
+        const seen = new Map<string, number>();
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach((e) => seen.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0));
+          const best = [...seen.entries()].sort((a, b) => b[1] - a[1])[0];
+          if (best && best[1] > 0) mark(best[0]);
+        }, { rootMargin: '-20% 0px -45% 0px', threshold: [0, 0.25, 0.5, 1] });
+        sections.forEach((el) => io.observe(el));
+        document.addEventListener('astro:before-swap', () => io.disconnect(), { once: true });
+
+      });
+    </script>
+  </body>
+</html>

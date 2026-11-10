@@ -1,0 +1,73 @@
+---
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+interface Props { slug: string; title: string }
+const { slug, title } = Astro.props;
+
+// Any image named <slug>.png or <slug>-<number>-<caption>.png joins the gallery, in file name order.
+const folder = join(process.cwd(), 'public', 'screenshots');
+const files = existsSync(folder)
+  ? readdirSync(folder)
+      .filter((file) => /\.(png|jpe?g|webp)$/i.test(file))
+      .filter((file) => file.startsWith(`${slug}.`) || file.startsWith(`${slug}-`))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  : [];
+
+const captionFor = (file: string) => {
+  const words = file
+    .replace(/\.[^.]+$/, '')
+    .slice(slug.length)
+    .replace(/^-?\d*-?/, '')
+    .replace(/-/g, ' ')
+    .trim()
+    .replace(/\bai\b/gi, 'AI');
+  return words ? words[0].toUpperCase() + words.slice(1) : '';
+};
+const slides = files.map((file) => ({ src: `/screenshots/${file}`, caption: captionFor(file) }));
+---
+{slides.length > 0 && (
+  <figure class="gallery" data-gallery aria-label={`Screenshots of ${title}`}>
+    <div class="gallery__track" data-track tabindex="0">
+      {slides.map((slide) => (
+        <img src={slide.src} alt={slide.caption ? `${title}: ${slide.caption}` : `Screenshot of ${title}`} data-caption={slide.caption} loading="lazy" />
+      ))}
+    </div>
+    {slides.length > 1 && (
+      <figcaption class="gallery__bar">
+        <button type="button" data-prev aria-label="Previous screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8" /></svg></button>
+        <p aria-live="polite"><span data-caption-text>{slides[0].caption}</span> <span class="gallery__count"><span data-index>1</span> of {slides.length}</span></p>
+        <button type="button" data-next aria-label="Next screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8" /></svg></button>
+      </figcaption>
+    )}
+  </figure>
+)}
+
+<script>
+  // Runs after every page change, because the router swaps pages without a reload.
+  document.addEventListener('astro:page-load', () => {
+    document.querySelectorAll<HTMLElement>('[data-gallery]').forEach((gallery) => {
+      const track = gallery.querySelector<HTMLElement>('[data-track]');
+      if (!track || gallery.dataset.ready) return;
+      gallery.dataset.ready = 'true';
+      const slides = [...track.querySelectorAll('img')];
+      const index = gallery.querySelector('[data-index]');
+      const caption = gallery.querySelector('[data-caption-text]');
+      let current = 0;
+
+      const show = (next: number) => {
+        const target = (next + slides.length) % slides.length;
+        track.scrollTo({ left: target * track.clientWidth });
+      };
+      gallery.querySelector('[data-prev]')?.addEventListener('click', () => show(current - 1));
+      gallery.querySelector('[data-next]')?.addEventListener('click', () => show(current + 1));
+      track.addEventListener('scroll', () => {
+        const nearest = Math.round(track.scrollLeft / track.clientWidth);
+        if (nearest === current || !slides[nearest]) return;
+        current = nearest;
+        if (index) index.textContent = String(current + 1);
+        if (caption) caption.textContent = slides[current].dataset.caption ?? '';
+      }, { passive: true });
+    });
+  });
+</script>

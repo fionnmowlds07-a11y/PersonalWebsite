@@ -1,0 +1,6 @@
+---
+// Renders text, marking any {{PLACEHOLDER}} so unfinished copy is easy to spot.
+interface Props { text: string }
+const parts = Astro.props.text.split(/(\{\{[A-Z_]+\}\})/);
+---
+{parts.map((part) => (part.startsWith('{{') ? <mark class="todo">{part}</mark> : part))}

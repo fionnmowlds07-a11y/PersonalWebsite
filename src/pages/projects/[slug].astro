@@ -1,0 +1,43 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Fill from '../../components/Fill.astro';
+import Plaque from '../../components/Plaque.astro';
+import Gallery from '../../components/Gallery.astro';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+  return projects.map((project) => ({ params: { slug: project.id }, props: { project } }));
+}
+
+const { id, data } = Astro.props.project;
+const all = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+const at = all.findIndex((project) => project.id === id);
+const prev = all[(at - 1 + all.length) % all.length];
+const next = all[(at + 1) % all.length];
+---
+<Base title={data.title} description={`${data.title}, a project by Fionn Mowlds.`}>
+  <article class="page case">
+    <a class="case__back" href="/projects">All projects</a>
+    <h1>{data.title}</h1>
+    <div class="case__grid">
+      <div class="case__text">
+        <p class="case__summary"><Fill text={data.summary} /></p>
+        <div class="case__links">
+          {data.liveUrl && <Plaque label="Live site" href={data.liveUrl} />}
+          {data.repoUrl && <Plaque label="Source code" href={data.repoUrl} />}
+        </div>
+        <dl>
+          <div><dt>My role</dt><dd><Fill text={data.role} /></dd></div>
+          <div><dt>Built with</dt><dd><Fill text={data.tech} /></dd></div>
+          <div><dt>Highlight</dt><dd><Fill text={data.highlight} /></dd></div>
+        </dl>
+      </div>
+      <Gallery slug={id} title={data.title} />
+    </div>
+    <nav class="case__more" aria-label="More projects">
+      <a href={`/projects/${prev.id}`} data-push="right" data-proj-prev><span>Previous</span>{prev.data.title}</a>
+      <a href={`/projects/${next.id}`} data-push="left" data-proj-next><span>Next</span>{next.data.title}</a>
+    </nav>
+  </article>
+</Base>
