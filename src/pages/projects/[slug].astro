@@ -18,10 +18,10 @@ const next = all[(at + 1) % all.length];
 ---
 <Base title={data.title} description={`${data.title}, a project by Fionn Mowlds.`}>
   <article class="page case">
-    <a class="case__back" href="/projects">All projects</a>
-    <h1>{data.title}</h1>
     <div class="case__grid">
       <div class="case__text">
+        <a class="case__back" href="/projects">All projects</a>
+        <h1>{data.title}</h1>
         <p class="case__summary"><Fill text={data.summary} /></p>
         <div class="case__links">
           {data.liveUrl && <Plaque label="Live site" href={data.liveUrl} />}

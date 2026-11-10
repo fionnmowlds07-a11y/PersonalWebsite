@@ -147,7 +147,8 @@ const onProjects = Astro.url.pathname.startsWith('/projects');
         if (!location.pathname.startsWith('/projects/')) return;
         const t = e.target as HTMLElement;
         if (t.closest?.('input, textarea, select, [contenteditable]')) return;
-        const link = document.querySelector<HTMLElement>(e.key === 'ArrowRight' ? '[data-proj-next]' : e.key === 'ArrowLeft' ? '[data-proj-prev]' : '');
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        const link = document.querySelector<HTMLElement>(e.key === 'ArrowRight' ? '[data-proj-next]' : '[data-proj-prev]');
         if (link) { e.preventDefault(); link.click(); }
       });
     </script>

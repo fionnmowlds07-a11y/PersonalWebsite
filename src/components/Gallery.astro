@@ -1,5 +1,5 @@
 ---
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 interface Props { slug: string; title: string }
@@ -25,22 +25,68 @@ const captionFor = (file: string) => {
     .replace(/\bhtml\b/gi, 'HTML');
   return words ? words[0].toUpperCase() + words.slice(1) : '';
 };
-const slides = files.map((file) => ({ src: `/screenshots/${file}`, caption: captionFor(file) }));
+// Read each image's pixel size from its file header, so the frame can match its shape exactly.
+const sizeOf = (file: string): { w: number; h: number } => {
+  try {
+    const b = readFileSync(join(folder, file));
+    if (b.toString('ascii', 1, 4) === 'PNG') return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+    if (b[0] === 0xff && b[1] === 0xd8) {
+      let i = 2;
+      while (i < b.length) {
+        if (b[i] !== 0xff) { i++; continue; }
+        const m = b[i + 1];
+        if (m >= 0xc0 && m <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(m)) return { w: b.readUInt16BE(i + 7), h: b.readUInt16BE(i + 5) };
+        i += 2 + b.readUInt16BE(i + 2);
+      }
+    }
+    if (b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP') {
+      const t = b.toString('ascii', 12, 16);
+      if (t === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
+      if (t === 'VP8 ') return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+      if (t === 'VP8L') { const v = b.readUInt32LE(21); return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 }; }
+    }
+  } catch {}
+  return { w: 1600, h: 1000 };
+};
+const slides = files.map((file) => ({ src: `/screenshots/${file}`, caption: captionFor(file), ...sizeOf(file) }));
+const ratioOf = (s: { w: number; h: number }) => Number((s.w / s.h).toFixed(4));
 ---
 {slides.length > 0 && (
   <figure class="gallery" data-gallery aria-label={`Screenshots of ${title}`}>
-    <div class="gallery__track" data-track tabindex="0">
-      {slides.map((slide) => (
-        <img src={slide.src} alt={slide.caption ? `${title}: ${slide.caption}` : `Screenshot of ${title}`} data-caption={slide.caption} loading="lazy" />
-      ))}
-    </div>
-    {slides.length > 1 && (
+    <div class="gallery__panel" data-panel style={`--ratio:${ratioOf(slides[0])}`}>
+      <div class="gallery__frame" data-frame tabindex="0">
+        {slides.map((slide, i) => (
+          <img
+            class={i === 0 ? 'gallery__slide is-active' : 'gallery__slide'}
+            src={slide.src}
+            width={slide.w}
+            height={slide.h}
+            data-ratio={ratioOf(slide)}
+            alt={slide.caption ? `${title}: ${slide.caption}` : `Screenshot of ${title}`}
+            data-caption={slide.caption}
+            loading={i === 0 ? 'eager' : 'lazy'}
+          />
+        ))}
+      </div>
       <figcaption class="gallery__bar">
-        <button type="button" data-prev aria-label="Previous screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8" /></svg></button>
-        <p aria-live="polite"><span data-caption-text>{slides[0].caption}</span> <span class="gallery__count"><span data-index>1</span> of {slides.length}</span></p>
-        <button type="button" data-next aria-label="Next screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8" /></svg></button>
+        {slides.length > 1 && (
+          <button type="button" data-prev aria-label="Previous screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8" /></svg></button>
+        )}
+        <p aria-live="polite"><span data-caption-text>{slides[0].caption}</span>{slides.length > 1 && <span class="gallery__count"> <span data-index>1</span> of {slides.length}</span>}<span class="gallery__hint"> Click to enlarge</span></p>
+        {slides.length > 1 && (
+          <button type="button" data-next aria-label="Next screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8" /></svg></button>
+        )}
       </figcaption>
-    )}
+      {slides.length > 1 && (
+        <div class="gallery__thumbs" role="tablist" aria-label="Choose a screenshot">
+          {slides.map((slide, i) => (
+            <button type="button" role="tab" data-thumb={i} aria-selected={i === 0 ? 'true' : 'false'} aria-label={slide.caption || `Screenshot ${i + 1}`}>
+              <img src={slide.src} alt="" width={slide.w} height={slide.h} loading="lazy" decoding="async" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
     <dialog class="lightbox" data-lightbox aria-label="Enlarged screenshot">
       <button type="button" class="lightbox__close" data-close aria-label="Close">Close</button>
       <div class="lightbox__scroll"><img alt="" data-lightbox-img /></div>
@@ -52,38 +98,55 @@ const slides = files.map((file) => ({ src: `/screenshots/${file}`, caption: capt
   // Runs after every page change, because the router swaps pages without a reload.
   document.addEventListener('astro:page-load', () => {
     document.querySelectorAll<HTMLElement>('[data-gallery]').forEach((gallery) => {
-      const track = gallery.querySelector<HTMLElement>('[data-track]');
-      if (!track || gallery.dataset.ready) return;
+      if (gallery.dataset.ready) return;
       gallery.dataset.ready = 'true';
-      const slides = [...track.querySelectorAll('img')];
-      const box = gallery.querySelector<HTMLDialogElement>('[data-lightbox]');
-      const big = gallery.querySelector<HTMLImageElement>('[data-lightbox-img]');
-      slides.forEach((img) => {
-        img.addEventListener('click', () => {
-          if (!box || !big) return;
-          big.src = img.currentSrc || img.src;
-          big.alt = img.alt;
-          box.showModal();
-        });
-      });
-      box?.addEventListener('click', (e) => { if (e.target === box || (e.target as HTMLElement).closest('[data-close]')) box.close(); });
+      const panel = gallery.querySelector<HTMLElement>('[data-panel]')!;
+      const frame = gallery.querySelector<HTMLElement>('[data-frame]')!;
+      const slides = [...frame.querySelectorAll<HTMLImageElement>('.gallery__slide')];
+      const thumbs = [...gallery.querySelectorAll<HTMLElement>('[data-thumb]')];
       const index = gallery.querySelector('[data-index]');
       const caption = gallery.querySelector('[data-caption-text]');
+      const box = gallery.querySelector<HTMLDialogElement>('[data-lightbox]');
+      const big = gallery.querySelector<HTMLImageElement>('[data-lightbox-img]');
       let current = 0;
+      let swiped = false;
 
       const show = (next: number) => {
         const target = (next + slides.length) % slides.length;
-        track.scrollTo({ left: target * track.clientWidth });
+        if (target === current) return;
+        slides[current].classList.remove('is-active');
+        slides[target].classList.add('is-active');
+        current = target;
+        // The frame takes the shape of the new screenshot, so it never has empty bars
+        panel.style.setProperty('--ratio', slides[current].dataset.ratio ?? '1.6');
+        if (index) index.textContent = String(current + 1);
+        if (caption) caption.textContent = slides[current].dataset.caption ?? '';
+        thumbs.forEach((t, i) => t.setAttribute('aria-selected', String(i === current)));
       };
       gallery.querySelector('[data-prev]')?.addEventListener('click', () => show(current - 1));
       gallery.querySelector('[data-next]')?.addEventListener('click', () => show(current + 1));
-      track.addEventListener('scroll', () => {
-        const nearest = Math.round(track.scrollLeft / track.clientWidth);
-        if (nearest === current || !slides[nearest]) return;
-        current = nearest;
-        if (index) index.textContent = String(current + 1);
-        if (caption) caption.textContent = slides[current].dataset.caption ?? '';
-      }, { passive: true });
+      thumbs.forEach((t, i) => t.addEventListener('click', () => show(i)));
+
+      // Swipe on touch screens
+      let startX = 0;
+      frame.addEventListener('pointerdown', (e) => { startX = e.clientX; swiped = false; });
+      frame.addEventListener('pointerup', (e) => {
+        const dx = e.clientX - startX;
+        if (e.pointerType === 'touch' && Math.abs(dx) > 40) { swiped = true; show(current + (dx < 0 ? 1 : -1)); }
+      });
+
+      // Click the picture to see it full size
+      frame.addEventListener('click', () => {
+        if (swiped || !box || !big) return;
+        const img = slides[current];
+        big.src = img.currentSrc || img.src;
+        big.alt = img.alt;
+        box.showModal();
+      });
+      frame.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); frame.click(); }
+      });
+      box?.addEventListener('click', (e) => { if (e.target === box || (e.target as HTMLElement).closest('[data-close]')) box.close(); });
     });
   });
 </script>
