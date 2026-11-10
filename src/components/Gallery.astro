@@ -21,7 +21,8 @@ const captionFor = (file: string) => {
     .replace(/^-?\d*-?/, '')
     .replace(/-/g, ' ')
     .trim()
-    .replace(/\bai\b/gi, 'AI');
+    .replace(/\bai\b/gi, 'AI')
+    .replace(/\bhtml\b/gi, 'HTML');
   return words ? words[0].toUpperCase() + words.slice(1) : '';
 };
 const slides = files.map((file) => ({ src: `/screenshots/${file}`, caption: captionFor(file) }));
@@ -40,6 +41,10 @@ const slides = files.map((file) => ({ src: `/screenshots/${file}`, caption: capt
         <button type="button" data-next aria-label="Next screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8" /></svg></button>
       </figcaption>
     )}
+    <dialog class="lightbox" data-lightbox aria-label="Enlarged screenshot">
+      <button type="button" class="lightbox__close" data-close aria-label="Close">Close</button>
+      <div class="lightbox__scroll"><img alt="" data-lightbox-img /></div>
+    </dialog>
   </figure>
 )}
 
@@ -51,6 +56,17 @@ const slides = files.map((file) => ({ src: `/screenshots/${file}`, caption: capt
       if (!track || gallery.dataset.ready) return;
       gallery.dataset.ready = 'true';
       const slides = [...track.querySelectorAll('img')];
+      const box = gallery.querySelector<HTMLDialogElement>('[data-lightbox]');
+      const big = gallery.querySelector<HTMLImageElement>('[data-lightbox-img]');
+      slides.forEach((img) => {
+        img.addEventListener('click', () => {
+          if (!box || !big) return;
+          big.src = img.currentSrc || img.src;
+          big.alt = img.alt;
+          box.showModal();
+        });
+      });
+      box?.addEventListener('click', (e) => { if (e.target === box || (e.target as HTMLElement).closest('[data-close]')) box.close(); });
       const index = gallery.querySelector('[data-index]');
       const caption = gallery.querySelector('[data-caption-text]');
       let current = 0;
