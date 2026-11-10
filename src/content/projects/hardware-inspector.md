@@ -1,5 +1,5 @@
 ---
-title: "V-Fetch"
+title: "Hardware Inspector"
 order: 5
 summary: "A Java command-line tool that reads CPU, cache, memory, PCI and USB details straight from Linux /proc and /sys, and measures the cache hierarchy from inside the JVM."
 role: "Team project for CS4421 Computer Organisation at the University of Limerick, 2026."
