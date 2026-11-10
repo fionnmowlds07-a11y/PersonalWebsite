@@ -22,7 +22,8 @@ const captionFor = (file: string) => {
     .replace(/-/g, ' ')
     .trim()
     .replace(/\bai\b/gi, 'AI')
-    .replace(/\bhtml\b/gi, 'HTML');
+    .replace(/\bhtml\b/gi, 'HTML')
+    .replace(/\b3d\b/gi, '3D');
   return words ? words[0].toUpperCase() + words.slice(1) : '';
 };
 // Read each image's pixel size from its file header, so the frame can match its shape exactly.
