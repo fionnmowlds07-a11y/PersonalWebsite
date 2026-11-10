@@ -218,7 +218,7 @@ a.link:hover { background: var(--sky); transform: translateY(-2px); }
 .foot a:hover { color: var(--sky); }
 
 /* Page curtain, driven by GSAP in Base.astro */
-.curtain { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; visibility: hidden; background: var(--navy); pointer-events: none; will-change: transform; }
+.curtain { position: fixed; inset: 0; z-index: 100; display: none; place-items: center; background: var(--navy); pointer-events: none; }
 .curtain::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 14px; background: linear-gradient(var(--sky) 0 6px, var(--white) 6px 14px); }
 .curtain svg { width: 4rem; height: 4rem; }
 
