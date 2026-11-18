@@ -10,6 +10,7 @@ const icon = {
   fit: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   full: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   down: 'M12 4v11M7 11l5 5 5-5M5 20h14',
+  open: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
 };
 ---
 <Base title="CV" description="The CV of Fionn Mowlds.">
@@ -27,6 +28,7 @@ const icon = {
           <button type="button" data-zoom-in aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d={icon.plus} /></svg></button>
         </div>
         <div class="viewer__group">
+          <a class="viewer__btn" href={cvFile} target="_blank" rel="noopener" aria-label="Open the CV as a PDF in a new tab" title="Open as a PDF in a new tab"><svg viewBox="0 0 24 24"><path d={icon.open} /></svg><span>Open</span></a>
           <a class="viewer__btn" href={cvFile} download="Fionn_Mowlds_CV.pdf"><svg viewBox="0 0 24 24"><path d={icon.down} /></svg><span>Download</span></a>
           <button type="button" data-full class="viewer__btn" aria-label="Full screen" title="Full screen (F)"><svg viewBox="0 0 24 24"><path d={icon.full} /></svg><span data-full-label>Full screen</span></button>
         </div>
@@ -66,6 +68,12 @@ const icon = {
     pagesEl.textContent = String(doc.numPages);
 
     const pages = await Promise.all(Array.from({ length: doc.numPages }, (_, i) => doc.getPage(i + 1)));
+    // The PDF's own links (email, GitHub, project sites), laid over the drawn page so they can be clicked
+    const links = await Promise.all(pages.map(async (page) => {
+      try {
+        return (await page.getAnnotations()).filter((a) => a.subtype === 'Link' && typeof a.url === 'string');
+      } catch { return []; }
+    }));
     const wrappers: HTMLElement[] = [];
     let zoom = 0; // 0 = fit width
     let token = 0;
@@ -97,6 +105,19 @@ const icon = {
         await pages[i].render({ canvas: next, viewport: pages[i].getViewport({ scale: scale * dpr }) }).promise;
         if (run !== token) return;
         canvas.replaceWith(next);
+        w.querySelectorAll('.viewer__link').forEach((el) => el.remove());
+        for (const link of links[i]) {
+          const [x1, y1] = vp.convertToViewportPoint(link.rect[0], link.rect[1]);
+          const [x2, y2] = vp.convertToViewportPoint(link.rect[2], link.rect[3]);
+          const a = document.createElement('a');
+          a.className = 'viewer__link';
+          a.href = link.url;
+          if (/^https?:/i.test(link.url)) { a.target = '_blank'; a.rel = 'noopener'; }
+          a.setAttribute('aria-label', link.url.replace(/^(mailto:|tel:|https?:\/\/)/i, '').replace(/\/$/, ''));
+          a.title = a.getAttribute('aria-label')!;
+          a.style.cssText = `left:${Math.min(x1, x2)}px;top:${Math.min(y1, y2)}px;width:${Math.abs(x2 - x1)}px;height:${Math.abs(y2 - y1)}px`;
+          w.appendChild(a);
+        }
       }
     };
 
