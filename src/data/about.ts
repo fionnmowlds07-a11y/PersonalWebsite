@@ -40,13 +40,13 @@ export const about = {
     },
   ],
   skills: [
-    { group: 'Languages', items: 'Python, TypeScript, JavaScript, Java, SQL, HTML/CSS, Lua, Bash' },
+    { group: 'Languages', items: 'Python, Java, TypeScript, JavaScript, SQL, HTML/CSS' },
     { group: 'Frameworks', items: 'React, Next.js, Electron, Three.js' },
     { group: 'Libraries', items: 'OpenCV, NumPy, ONNX Runtime, RTMPose (rtmlib)' },
     { group: 'Backend and cloud', items: 'AWS (CDK, ECS Fargate, CloudFront), PostgreSQL, Supabase, Docker, Vercel' },
     { group: 'Testing and CI', items: 'pytest, Vitest, Playwright, GitHub Actions' },
     { group: 'AI', items: 'OpenAI API, Claude API' },
-    { group: 'Tools', items: 'Git and GitHub, Linux (Arch), Neovim, Claude Code' },
+    { group: 'Developer tools', items: 'Git and GitHub, Linux (Arch), Neovim, Claude Code' },
     { group: 'Spoken', items: 'English (native), Irish (intermediate), Latin (intermediate)' },
   ],
   description:
