@@ -1,5 +1,5 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Fill from '../../components/Fill.astro';
 import Plaque from '../../components/Plaque.astro';
@@ -10,7 +10,8 @@ export async function getStaticPaths() {
   return projects.map((project) => ({ params: { slug: project.id }, props: { project } }));
 }
 
-const { id, data } = Astro.props.project;
+const { id, data, body } = Astro.props.project;
+const { Content } = await render(Astro.props.project);
 const all = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
 const at = all.findIndex((project) => project.id === id);
 const prev = all[(at - 1 + all.length) % all.length];
@@ -35,6 +36,11 @@ const next = all[(at + 1) % all.length];
       </div>
       <Gallery slug={id} title={data.title} />
     </div>
+    {body?.trim() && (
+      <section class="case__story" aria-label={`More about ${data.title}`}>
+        <Content />
+      </section>
+    )}
     <nav class="case__more" aria-label="More projects">
       <a href={`/projects/${prev.id}`} data-push="right" data-proj-prev><span>Previous</span>{prev.data.title}</a>
       <a href={`/projects/${next.id}`} data-push="left" data-proj-next><span>Next</span>{next.data.title}</a>

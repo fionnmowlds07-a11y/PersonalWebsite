@@ -186,6 +186,12 @@ a.link:hover { background: var(--sky); transform: translateY(-2px); }
 .case dt { color: var(--muted); font-weight: 600; }
 .case dd { margin: 0; }
 .case__grid:not(:has(.gallery)) { grid-template-columns: minmax(0, 46rem); }
+.case__story { max-width: 46rem; margin-top: clamp(2rem, 5vw, 3.5rem); border-top: 2px solid var(--navy); padding-top: 0.5rem; }
+.case__story h2 { margin: 1.75rem 0 0.6rem; font-size: clamp(1.4rem, 2.6vw, 1.75rem); }
+.case__story p + p, .case__story ul + p, .case__story p + ul { margin-top: 0.9rem; }
+.case__story ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.6rem; }
+.case__story li::marker { color: var(--river); }
+.case__story strong { color: var(--navy); font-weight: 600; }
 .case__more { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: clamp(2.5rem, 6vw, 4rem); border-top: 2px solid var(--navy); padding-top: 1rem; }
 .case__more a { display: grid; gap: 0.1rem; padding: 0.8rem 1rem; background: var(--white); font: 600 1.25rem/1.2 var(--display); color: var(--navy); text-decoration: none; transition: background-color 200ms var(--ease), transform 250ms var(--ease); }
 .case__more a:last-child { text-align: right; }

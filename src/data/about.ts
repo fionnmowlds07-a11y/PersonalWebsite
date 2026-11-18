@@ -11,12 +11,13 @@ export const about = {
     end: '.',
   },
   facts: [
-    { label: 'Studying', value: 'Immersive Software Engineering at the University of Limerick, first year' },
+    { label: 'Studying', value: 'The integrated BSc/MSc in Immersive Software Engineering at the University of Limerick, 2026 to 2030' },
     { label: 'Based in', value: 'Cork, Ireland' },
-    { label: 'Building', value: 'RowVision, which analyses rowing technique from phone footage using computer vision and biomechanical analysis' },
+    { label: 'Building', value: 'RowVision, a desktop app in use by rowers around Ireland that scores rowing technique from ordinary phone footage' },
     { label: 'Currently', value: 'Founder of StudyRight Ireland, volunteer web developer for Kidscope and part-time IT support at CJM Maritime' },
     { label: 'Secondary School', value: 'H1 in Computer Science, voted prefect in 6th year to represent the student body in my school' },
-    { label: 'Rowing', value: 'Represented Ireland in 2025 at the Junior Home International. 1st in the B Final, Championship Pairs, Metropolitan Regatta, London' },
+    { label: 'Rowing', value: 'Represented Ireland in 2025 at the Junior Home International, and won the B Final of Championship Pairs at the Metropolitan Regatta, London, as an U17 pair against senior university crews. Now row for the University of Limerick' },
+    { label: 'Coaching', value: 'Volunteer coach at Shandon Boat Club, mentoring beginners at learn-to-row camps five years running' },
   ],
   experience: [
     {
@@ -29,7 +30,7 @@ export const about = {
       role: 'Volunteer Web Developer',
       org: 'Kidscope, NICHE Health Project (Cork) CLG, HSE South West',
       when: 'Aug 2026 – Present',
-      note: 'Structure web content for a paediatric community child health service, gathering requirements from clinical staff and health directors.',
+      note: 'Build and structure web content for a paediatric community child health service, from referral forms to sleep guides. Gathered requirements from clinical staff and health directors, and the site is now live and in active use.',
     },
     {
       role: 'Crew Assistant',
@@ -40,11 +41,12 @@ export const about = {
   ],
   skills: [
     { group: 'Languages', items: 'Python, TypeScript, JavaScript, Java, SQL, HTML/CSS, Lua, Bash' },
-    { group: 'Frameworks', items: 'Next.js, React, Three.js, OpenCV, NumPy' },
-    { group: 'Backend and cloud', items: 'PostgreSQL, Supabase, REST APIs, Docker, Vercel' },
+    { group: 'Frameworks', items: 'React, Next.js, Electron, Three.js' },
+    { group: 'Libraries', items: 'OpenCV, NumPy, ONNX Runtime, RTMPose (rtmlib)' },
+    { group: 'Backend and cloud', items: 'AWS (CDK, ECS Fargate, CloudFront), PostgreSQL, Supabase, Docker, Vercel' },
     { group: 'Testing and CI', items: 'pytest, Vitest, Playwright, GitHub Actions' },
-    { group: 'AI', items: 'OpenAI API, Claude API, Claude Code' },
-    { group: 'Tools', items: 'Git and GitHub, Linux (Arch), Neovim' },
+    { group: 'AI', items: 'OpenAI API, Claude API' },
+    { group: 'Tools', items: 'Git and GitHub, Linux (Arch), Neovim, Claude Code' },
     { group: 'Spoken', items: 'English (native), Irish (intermediate), Latin (intermediate)' },
   ],
   description:
