@@ -17,7 +17,7 @@ export const about = {
     { label: 'Currently', value: 'Founder of StudyRight Ireland, volunteer web developer for Kidscope and part-time IT support at CJM Maritime' },
     { label: 'Secondary School', value: 'H1 in Computer Science, voted prefect in 6th year to represent the student body in my school' },
     { label: 'Rowing', value: 'Represented Ireland in 2025 at the Junior Home International, and won the B Final of Championship Pairs at the Metropolitan Regatta, London, as an U17 pair against senior university crews. Now row for the University of Limerick' },
-    { label: 'Coaching', value: 'Volunteer coach at Shandon Boat Club, mentoring beginners at learn-to-row camps five years running' },
+    { label: 'Coaching', value: 'Volunteer coach for the Shandon Boat Club learn-to-row camps, mentoring beginners five years running' },
   ],
   experience: [
     {
